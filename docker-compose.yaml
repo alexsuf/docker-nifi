@@ -1,0 +1,68 @@
+version: '3.8'
+#
+# Доступ: https://127.0.0.1:8443/nifi/
+# Login: admin
+# Password: Zadonsky12345
+#
+# Для создания пользователя выполнить команды:
+#   docker exec -it nifi bash
+# Далее внутри контейнера:
+#   ./bin/nifi.sh set-single-user-credentials admin Zadonsky12345
+#   ./bin/nifi.sh restart
+# 
+services:
+  nifi:
+      image: alexsuf/nifi
+      container_name: nifi
+      ports:
+       - 8443:8443  # https://127.0.0.1:8443/nifi/
+      environment:
+        SINGLE_USER_CREDENTIALS_USERNAME: admin
+        SINGLE_USER_CREDENTIALS_PASSWORD: Zadonsky12345
+        TZ: Europe/Moscow
+      volumes:
+       - ./bootstrap.conf:/opt/nifi/nifi-current/conf/bootstrap.conf
+       - ./nifi_conf:/opt/nifi/nifi-current/conf
+       - ./opt/state:/opt/nifi/nifi-current/state
+       - ./opt/toolkit:/opt/nifi/nifi-toolkit-current
+       - ./opt/run:/opt/nifi/nifi-current/run
+       - ./opt/logs:/opt/nifi/nifi-current/logs
+       - ./opt/provenance_repository:/opt/nifi/nifi-current/provenance_repository
+       - ./opt/flowfile_repository:/opt/nifi/nifi-current/flowfile_repository
+       - ./opt/database_repository:/opt/nifi/nifi-current/database_repository
+       - ./opt/content_repository:/opt/nifi/nifi-current/content_repository
+       - ./files_in:/files_in
+       - ./files_out:/files_out
+
+  source: 
+    image: alexsuf/postgres
+    container_name: source
+    ports:
+     - "1111:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: source_db
+      TZ: Europe/Moscow
+    volumes:
+      - ./source_db:/var/lib/postgresql/data
+      - ./on_startup.sql:/docker-entrypoint-initdb.d/init.sql
+
+  greenplum:
+      image: alexsuf/greenplum 
+      container_name: greenplum
+      restart: always
+      environment:
+        TZ: Europe/Moscow
+      ports:
+       - 2222:5432
+      stdin_open: true
+      tty: true
+      volumes:
+       - greenplum_db:/gpdata
+
+volumes:
+  greenplum_db:
+    external: true
+  nifi_conf:
+    external: true
